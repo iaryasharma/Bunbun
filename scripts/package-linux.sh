@@ -51,6 +51,12 @@ strip "$ROOT"/usr/lib/bunbun/* 2>/dev/null || true
 mkdir -p "$ROOT/usr/share/doc/bunbun"
 cp LICENSE "$ROOT/usr/share/doc/bunbun/copyright"
 cp THIRD_PARTY_NOTICES.md "$ROOT/usr/share/doc/bunbun/" 2>/dev/null || true
+# gtk-layer-shell ships inside both packages (the island's RUNPATH is $ORIGIN/lib, see
+# CMakeLists.txt). Distros differ: Ubuntu 22.04 has 0.7, which crashes on right-click.
+mkdir -p "$ROOT/usr/lib/bunbun/lib"
+gls="$(ldd "$BUILD/bunbun" | awk '$1 ~ /^libgtk-layer-shell/ {print $3}')"
+[ -n "$gls" ] || { echo "libgtk-layer-shell not found; is it linked into $BUILD/bunbun?" >&2; exit 1; }
+cp -L "$gls" "$ROOT/usr/lib/bunbun/lib/"
 
 # ── .deb ────────────────────────────────────────────────────────────────────
 DEB="$DIST/Bunbun-$VERSION-amd64.deb"
@@ -73,9 +79,6 @@ DEPENDS="$(cd "$STAGE/shlibs" && dpkg-shlibdeps -O --ignore-missing-info \
     "../deb/usr/lib/bunbun/bunbun" "../deb/usr/lib/bunbun/bunbun-settings" "../deb/usr/lib/bunbun/bunbun-hook" 2>/dev/null |
     sed -n 's/^shlibs:Depends=//p')"
 [ -n "$DEPENDS" ] || DEPENDS="libgtk-3-0, libgtk-layer-shell0, libsoup-3.0-0, libwebkit2gtk-4.1-0"
-# CI links gtk-layer-shell from /usr/local (see ci.yml), which dpkg-shlibdeps can't map to
-# a package and so leaves out. The .deb still depends on the system package by name.
-case "$DEPENDS" in *libgtk-layer-shell*) ;; *) DEPENDS="$DEPENDS, libgtk-layer-shell0" ;; esac
 INSTALLED_KB="$(du -sk "$PKG/usr" | cut -f1)"
 cat > "$PKG/DEBIAN/control" <<EOF
 Package: bunbun
@@ -103,11 +106,11 @@ APPIMAGE="$DIST/Bunbun-$VERSION-x86_64.AppImage"
 rm -rf "$APPDIR" "$APPIMAGE"
 cp -a "$ROOT" "$APPDIR"
 mkdir -p "$APPDIR/usr/lib/bunbun/lib"
-# Libraries the island needs that many desktops don't have installed:
-# gtk-layer-shell, and libsoup 3 (lyrics) with nghttp2. Not libpsl: every distro has
-# libpsl.so.5, and the build machine's copy needs a libunistring newer systems lack.
+# Libraries the island needs that many desktops don't have installed: libsoup 3 (lyrics)
+# with nghttp2. (gtk-layer-shell is already in the tree, copied above.) Not libpsl: every
+# distro has libpsl.so.5, and the build machine's copy needs a libunistring newer systems lack.
 # HTTPS itself comes from the system's glib-networking, like every GNOME/KDE app.
-for want in libgtk-layer-shell libsoup-3.0 libnghttp2; do
+for want in libsoup-3.0 libnghttp2; do
     lib="$(ldd "$APPDIR/usr/lib/bunbun/bunbun" | awk -v w="$want" 'index($1, w) == 1 {print $3}')"
     [ -n "$lib" ] && cp -L "$lib" "$APPDIR/usr/lib/bunbun/lib/"
 done

@@ -129,6 +129,10 @@ set(PKGLIB ${CMAKE_INSTALL_LIBDIR}/bunbun)
 if(CMAKE_INSTALL_LIBDIR MATCHES "^lib/")  # Debian's lib/x86_64-linux-gnu: keep it plain lib/bunbun
     set(PKGLIB lib/bunbun)
 endif()
+# The island looks for libraries it ships itself (gtk-layer-shell 0.10, see package-linux.sh) in
+# lib/ next to it. Set for the install only, so the build tree keeps using the system's copies.
+# (On the target itself: CMAKE_INSTALL_RPATH is read when a target is created, too early here.)
+set_target_properties(bunbun PROPERTIES INSTALL_RPATH "\$ORIGIN/lib")
 install(TARGETS bunbun bunbun-hook RUNTIME DESTINATION ${PKGLIB})
 if(BUNBUN_BUILD_SETTINGS)
     install(TARGETS bunbun-settings RUNTIME DESTINATION ${PKGLIB})

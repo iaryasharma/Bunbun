@@ -78,14 +78,14 @@ jobs:
             desktop-file-utils  # appimagetool checks the .desktop file with desktop-file-validate
 
       - name: Build gtk-layer-shell 0.10.0
-        # Ubuntu 22.04 ships gtk-layer-shell 0.6.0. The island crashed on right-click
-        # with the 0.7.0 the AppImage used to bundle; 0.10.0 (Fedora 42's version) does
-        # not. Build it into /usr/local and link against it, so the AppImage carries it.
+        # Ubuntu 22.04 ships gtk-layer-shell 0.7.0. The island crashed on right-click
+        # with that version (the AppImage used to bundle it); 0.10.0 (Fedora 42's version) does
+        # not. Build it into /usr/local and link against it; package-linux.sh ships it in both packages.
         run: |
           sudo apt-get install -y -qq meson libwayland-dev wayland-protocols
           git clone --depth 1 --branch v0.10.0 https://github.com/wmww/gtk-layer-shell.git "$RUNNER_TEMP/gtk-layer-shell"
           meson setup "$RUNNER_TEMP/gls-build" "$RUNNER_TEMP/gtk-layer-shell" --prefix=/usr/local --libdir=lib \
-            -Ddocs=false -Dtests=false
+            -Dintrospection=false -Ddocs=false -Dtests=false
           sudo meson install -C "$RUNNER_TEMP/gls-build"
           echo "PKG_CONFIG_PATH=/usr/local/lib/pkgconfig" >> "$GITHUB_ENV"
 
