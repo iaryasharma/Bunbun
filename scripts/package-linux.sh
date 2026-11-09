@@ -11,7 +11,7 @@
 # Build on the oldest system you want to support: the binaries need that
 # glibc or newer. Release CI uses Ubuntu 22.04 (glibc 2.35).
 #
-# The AppImage carries Bunbun's own programs, the settings UI, gtk-layer-shell
+# The AppImage carries Bunbun's own programs, the settings UI, gtk-layer-shell 0.10
 # and libsoup 3 (lyrics), and uses the system's GTK 3 (on every GNOME and KDE
 # desktop). The settings window also needs WebKitGTK 4.1; without it, the
 # island opens settings.ini in a text editor instead.
@@ -53,6 +53,10 @@ cp LICENSE "$ROOT/usr/share/doc/bunbun/copyright"
 cp THIRD_PARTY_NOTICES.md "$ROOT/usr/share/doc/bunbun/" 2>/dev/null || true
 # gtk-layer-shell ships inside both packages (the island's RUNPATH is $ORIGIN/lib, see
 # CMakeLists.txt). Distros differ: Ubuntu 22.04 has 0.7, which crashes on right-click.
+# Older copies (0.7 on Ubuntu 22.04) crash the island's right-click menu. Refuse to ship one:
+# scripts/build-gtk-layer-shell.sh builds the right version, and PKG_CONFIG_PATH must point at it.
+pkg-config --atleast-version=0.10 gtk-layer-shell-0 ||
+    { echo "gtk-layer-shell is $(pkg-config --modversion gtk-layer-shell-0): need 0.10 or newer. Run scripts/build-gtk-layer-shell.sh and export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig." >&2; exit 1; }
 mkdir -p "$ROOT/usr/lib/bunbun/lib"
 gls="$(ldd "$BUILD/bunbun" | awk '$1 ~ /^libgtk-layer-shell/ {print $3}')"
 [ -n "$gls" ] || { echo "libgtk-layer-shell not found; is it linked into $BUILD/bunbun?" >&2; exit 1; }
@@ -78,7 +82,7 @@ mkdir -p "$STAGE/shlibs/debian"
 DEPENDS="$(cd "$STAGE/shlibs" && dpkg-shlibdeps -O --ignore-missing-info \
     "../deb/usr/lib/bunbun/bunbun" "../deb/usr/lib/bunbun/bunbun-settings" "../deb/usr/lib/bunbun/bunbun-hook" 2>/dev/null |
     sed -n 's/^shlibs:Depends=//p')"
-[ -n "$DEPENDS" ] || DEPENDS="libgtk-3-0, libgtk-layer-shell0, libsoup-3.0-0, libwebkit2gtk-4.1-0"
+[ -n "$DEPENDS" ] || DEPENDS="libgtk-3-0, libsoup-3.0-0, libwebkit2gtk-4.1-0"
 INSTALLED_KB="$(du -sk "$PKG/usr" | cut -f1)"
 cat > "$PKG/DEBIAN/control" <<EOF
 Package: bunbun

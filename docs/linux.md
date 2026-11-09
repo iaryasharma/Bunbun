@@ -335,8 +335,10 @@ mascot and the hook installers stay one copy.
 tree, and makes both packages from it:
 
 - the **`.deb`** takes its dependencies from the binaries (`dpkg-shlibdeps`), so on newer releases
-  the 64-bit-time package names (`libgtk-3-0t64`) satisfy them;
-- the **AppImage** carries the programs, the settings UI, gtk-layer-shell and libsoup 3 (for the
+  the 64-bit-time package names (`libgtk-3-0t64`) satisfy them. It also ships gtk-layer-shell 0.10 in
+  `/usr/lib/bunbun/lib`, which the island loads before the system's copy, so it doesn't depend on
+  `libgtk-layer-shell0`;
+- the **AppImage** carries the programs, the settings UI, gtk-layer-shell 0.10 and libsoup 3 (for the
   island only: what the island opens, the settings window included, gets the system's libraries),
   and uses the system's
   GTK 3 and WebKitGTK. Without WebKitGTK the island opens `settings.ini` in a text editor instead of

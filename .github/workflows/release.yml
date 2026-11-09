@@ -42,7 +42,15 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq build-essential cmake ninja-build pkg-config dpkg-dev \
             libgtk-3-dev libgtk-layer-shell-dev libsoup-3.0-dev libwebkit2gtk-4.1-dev libx11-dev xvfb \
+            meson libwayland-dev wayland-protocols \
             desktop-file-utils  # appimagetool checks the .desktop file with desktop-file-validate
+
+      - name: Build gtk-layer-shell 0.10.0
+        # Ubuntu 22.04 ships 0.7.0, which crashes the island's right-click menu. The packages
+        # must carry 0.10.0, so build it here first. See scripts/build-gtk-layer-shell.sh.
+        run: |
+          ./scripts/build-gtk-layer-shell.sh
+          echo "PKG_CONFIG_PATH=/usr/local/lib/pkgconfig" >> "$GITHUB_ENV"
 
       - name: Build and package
         env:

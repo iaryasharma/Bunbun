@@ -30,6 +30,11 @@ option(BUNBUN_BUILD_SETTINGS "Build bunbun-settings (needs WebKitGTK 4.1)" ON)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GTK REQUIRED IMPORTED_TARGET gtk+-3.0)
 pkg_check_modules(LAYERSHELL REQUIRED IMPORTED_TARGET gtk-layer-shell-0>=0.6)
+if(LAYERSHELL_VERSION VERSION_LESS 0.10)
+    # 0.7 crashes the island's right-click menu (Ubuntu 22.04 ships it). The packages need 0.10.
+    message(WARNING "gtk-layer-shell ${LAYERSHELL_VERSION} crashes the island's right-click menu. "
+                    "Build 0.10 or newer with scripts/build-gtk-layer-shell.sh (see docs/building.md).")
+endif()
 # Lyrics (LRCLIB, NetEase) are fetched with libsoup 3.
 pkg_check_modules(SOUP REQUIRED IMPORTED_TARGET libsoup-3.0)
 # Full-screen detection and the hide / tuck hotkeys on X11.

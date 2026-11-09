@@ -13,6 +13,7 @@ Bunbun incorporates ideas and components under open-source software licenses.
 | Lucide React | Settings UI icons | ISC |
 | Vite & TypeScript | Settings UI build tooling | MIT / Apache-2.0 |
 | [llama.cpp](https://github.com/ggml-org/llama.cpp) | Optional local AI helper (`bunbun-brain.exe`); built only when fetched with `scripts/setup.sh --local-ai`. Model files are not part of Bunbun: each carries its own licence | MIT |
+| [GTK Layer Shell](https://github.com/wmww/gtk-layer-shell) v0.10.0 | Layer-shell support for the Linux island. Shipped unmodified as `libgtk-layer-shell.so.0` in the Linux packages (the source is the linked tag) | LGPL-3.0-or-later (most files MIT) |
 | [llvm-mingw](https://github.com/mstorsjo/llvm-mingw) | Statically linked C++ toolchain & runtime (libc++, mingw-w64 CRT) | Apache-2.0 with LLVM Exception |
 
 ### Exclusions & Proprietary Assets
