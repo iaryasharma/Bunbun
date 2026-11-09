@@ -614,6 +614,12 @@ constexpr char kBridgeScript[] = R"JS(
 }  // namespace
 
 int main(int argc, char** argv) {
+    // WebKitGTK's DMABUF renderer fails on some Wayland compositors (Hyprland, for one):
+    // the settings window opens, then exits with "Error 71 (Protocol error)". Turn that
+    // renderer off on Wayland, unless the user has chosen a value already. It must be set
+    // before WebKit starts, so it goes before gtk_init.
+    if (getenv("WAYLAND_DISPLAY") && !getenv("WEBKIT_DISABLE_DMABUF_RENDERER"))
+        setenv("WEBKIT_DISABLE_DMABUF_RENDERER", "1", 1);
     gtk_init(&argc, &argv);
     g_uiDir = bb::plat::DataDir() + "/settings-ui";
     std::string start;

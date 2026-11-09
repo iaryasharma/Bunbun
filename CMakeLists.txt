@@ -145,5 +145,5 @@ install(FILES packaging/linux/io.github.bunbun.Bunbun.metainfo.xml DESTINATION $
 install(CODE "foreach(size 64 128 256 512)
                   set(dir \$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DATADIR}/icons/hicolor/\${size}x\${size}/apps)
                   file(MAKE_DIRECTORY \${dir})
-                  execute_process(COMMAND $<TARGET_FILE:bunbun> --render-icon \${dir}/bunbun.png \${size})
+                  execute_process(COMMAND \"$<TARGET_FILE:bunbun>\" --render-icon \"\${dir}/bunbun.png\" \${size})
               endforeach()")

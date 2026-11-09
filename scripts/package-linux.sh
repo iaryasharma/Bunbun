@@ -73,6 +73,9 @@ DEPENDS="$(cd "$STAGE/shlibs" && dpkg-shlibdeps -O --ignore-missing-info \
     "../deb/usr/lib/bunbun/bunbun" "../deb/usr/lib/bunbun/bunbun-settings" "../deb/usr/lib/bunbun/bunbun-hook" 2>/dev/null |
     sed -n 's/^shlibs:Depends=//p')"
 [ -n "$DEPENDS" ] || DEPENDS="libgtk-3-0, libgtk-layer-shell0, libsoup-3.0-0, libwebkit2gtk-4.1-0"
+# CI links gtk-layer-shell from /usr/local (see ci.yml), which dpkg-shlibdeps can't map to
+# a package and so leaves out. The .deb still depends on the system package by name.
+case "$DEPENDS" in *libgtk-layer-shell*) ;; *) DEPENDS="$DEPENDS, libgtk-layer-shell0" ;; esac
 INSTALLED_KB="$(du -sk "$PKG/usr" | cut -f1)"
 cat > "$PKG/DEBIAN/control" <<EOF
 Package: bunbun

@@ -5,6 +5,16 @@ and versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- **Linux: right-clicking the island no longer quits Bunbun.** The AppImage bundled gtk-layer-shell
+  0.7.0, which crashes when the island's right-click menu opens on newer GTK (seen on Fedora 42 with
+  Hyprland). The Linux build now links gtk-layer-shell 0.10.0 and the AppImage carries it. The `.deb`
+  still uses the system's gtk-layer-shell, so on Ubuntu 22.04 it keeps the older library until the
+  system package is updated.
+- **Linux: the settings window closes right after it opens on some Wayland compositors** (Hyprland).
+  WebKitGTK's DMABUF renderer failed with "Protocol error"; Bunbun now turns it off on Wayland. Set
+  `WEBKIT_DISABLE_DMABUF_RENDERER` yourself to override.
+
 ## [0.3.10]
 
 ### Added
