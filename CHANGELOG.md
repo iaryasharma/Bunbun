@@ -6,6 +6,11 @@ and versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Fixed
+- **Linux: with two media players you can choose which one the island shows.** A browser video used to take over
+  from Spotify and stay, with no way back. With more than one player playing or paused, the player's name on the
+  Music page shows how many, a click shows the next one, and right-click → **Media source** lists them with
+  **Automatic**. A player you pick stays on show until it stops; then the island chooses again (a playing player
+  first, then the most recent). The rules are shared code (`common/media_pick.h`) with a unit test.
 - **Linux: the music pill fits the song.** A long song title was cut at 200 px. The pill now grows to fit the title, and with lyrics on, to fit the lyric line, up to 40 % of the monitor's width (not a fixed 380 px).
 - **Linux: Settings → General → Check now asks GitHub for the latest release.** It used to say it couldn't check, without asking. It now shows "up to date" or the new version, with a Download button for the release page.
 

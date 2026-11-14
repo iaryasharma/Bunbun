@@ -44,6 +44,7 @@ enum class Action {
     TimerMode, PomoToggle, PomoSkip, PomoReset, PomoAuto, PomoLength, CountToggle, CountAdd, CountReset,
     CountPreset, CountSave, TimerRing, SwToggle, SwLap, SwReset, SwCopy,
     VolumeMute, VolumeSet,  // the System page's volume card
+    MediaSource,            // the music page's player name: show the next running player
     WorkStart, WorkPause, WorkResume, WorkBreak, WorkDone, WorkReport, WorkPage,  // Work mode (work_linux.cpp)
     ScreenTimeLimit,        // the Screen Time page's limit: steps through 2 to 12 hours
     ScreenTimeDay,          // a bar of the week: that day's time and apps (index = yyyymmdd)

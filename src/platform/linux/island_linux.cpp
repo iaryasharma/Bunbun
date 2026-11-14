@@ -1696,6 +1696,32 @@ GtkWidget* BuildMenu(bool tray) {
         bb::settings::Set(L"Bunbun.PillLyrics", gtk_check_menu_item_get_active(it) ? &on : nullptr);
     }), nullptr);
     gtk_menu_shell_append(GTK_MENU_SHELL(menu), lyrics);
+    // Media source: every player that's playing or paused, and "Automatic". Only worth a menu
+    // when there is something to choose (several players, or a pick to undo).
+    {
+        const std::vector<bb::mpris::Source> sources = bb::mpris::Sources();
+        const std::string picked = bb::mpris::Picked();
+        if (sources.size() > 1 || !picked.empty()) {
+            GtkWidget* sub = gtk_menu_new();
+            GSList* group = nullptr;
+            const auto add = [&](const std::string& id, const std::string& label, bool active) {
+                GtkWidget* it = gtk_radio_menu_item_new_with_label(group, label.c_str());
+                group = gtk_radio_menu_item_get_group(GTK_RADIO_MENU_ITEM(it));
+                gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(it), active);
+                g_signal_connect_data(it, "activate",
+                                      G_CALLBACK(+[](GtkMenuItem*, gpointer d) { bb::mpris::Pick(*static_cast<std::string*>(d)); }),
+                                      new std::string(id), +[](gpointer d, GClosure*) { delete static_cast<std::string*>(d); },
+                                      static_cast<GConnectFlags>(0));
+                gtk_menu_shell_append(GTK_MENU_SHELL(sub), it);
+            };
+            add("", "Automatic", picked.empty());
+            for (const bb::mpris::Source& s : sources)
+                add(s.id, s.name + (s.playing ? "  (playing)" : "  (paused)"), s.id == picked);
+            GtkWidget* parent = gtk_menu_item_new_with_label("Media source");
+            gtk_menu_item_set_submenu(GTK_MENU_ITEM(parent), sub);
+            gtk_menu_shell_append(GTK_MENU_SHELL(menu), parent);
+        }
+    }
     if (bb::lfeat::Get().tuckHotkey)
         item("Tuck away (Ctrl+Alt+H)", G_CALLBACK(+[](GtkMenuItem*, gpointer) { bb::lfeat::SetTucked(true); }));
     if (bb::lfeat::Get().timer) {  // Modules.TimerModule: the focus timer from the menu

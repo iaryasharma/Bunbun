@@ -1135,7 +1135,14 @@ void PaintMusic(cairo_t* cr, const Rect& pg) {
         DrawMascot(cr, ax + art / 2, ay + art / 2, art * 0.8);
     }
     const double tx = ax + art + 18, tw = pg.x + pg.w - tx;
-    SText(cr, g_track.player, tx, ay, tw, 16, FLabel, Accent());
+    // The player's name. With more than one running it says so, and a click shows the next one
+    // (the right-click menu has the list and "Automatic").
+    std::string sourceLabel = g_track.player;
+    const size_t running = bb::mpris::Sources().size();
+    if (running > 1) sourceLabel += "  \xC2\xB7  " + std::to_string(running) + " players";
+    if (!bb::mpris::Picked().empty()) sourceLabel += "  \xC2\xB7  picked";
+    SText(cr, sourceLabel, tx, ay, tw, 16, FLabel, Accent());
+    if (running > 1) g_hits.push_back({{tx, ay - 2, std::min(tw, 260.0), 20}, Action::MediaSource});
     SText(cr, g_track.title.empty() ? "Nothing playing" : g_track.title, tx, ay + 22, tw, 24, FSong, W(1));
     SText(cr, g_track.artist, tx, ay + 46, tw, 18, FBody, W(0.65));
     if (!g_track.album.empty()) SText(cr, g_track.album, tx, ay + 64, tw, 16, FSmall, W(0.45));
@@ -2784,6 +2791,9 @@ bool StudioDo(const Hit& h) {
                 if (target[0] == '~') target = bb::plat::HomeDir() + target.substr(1);
                 bb::plat::OpenWithDefault(target);
             }
+            return true;
+        case Action::MediaSource:
+            bb::mpris::CycleSource();
             return true;
         case Action::OpenMusic:
             // Bunbun.MusicApp: the app that's playing, or the one you picked. With

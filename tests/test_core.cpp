@@ -21,6 +21,7 @@
 #include "../src/common/backup.h"
 #include "../src/common/work.h"
 #include "../src/common/ics.h"
+#include "../src/common/media_pick.h"
 
 #include <algorithm>
 #include <cwchar>
@@ -736,6 +737,34 @@ static void TestAppList() {
     CHECK(Matches(std::string("mpv, celluloid"), std::string("io.github.celluloid_player.celluloid")));  // narrow too
 }
 
+// Which media player the island shows when several run (Linux MPRIS; the rules are shared code).
+static void TestMediaPick() {
+    using namespace bb::mediapick;
+    const auto cand = [](const char* id, State s, long long at) { return Candidate{id, s, at}; };
+    bool gone = false;
+    CHECK(Choose({}, "", &gone) == -1 && !gone);
+    // Automatic: playing beats paused; the most recent of equals wins; stopped never shows.
+    CHECK(Choose({cand("spotify", State::Paused, 9), cand("chrome", State::Playing, 1)}, "") == 1);
+    CHECK(Choose({cand("spotify", State::Playing, 5), cand("chrome", State::Playing, 8)}, "") == 1);
+    CHECK(Choose({cand("spotify", State::Stopped, 9), cand("chrome", State::Paused, 1)}, "") == 1);
+    CHECK(Choose({cand("spotify", State::Stopped, 9)}, "") == -1);
+    // Issue 7: Spotify plays, a Chrome video starts. Picking Spotify keeps it on show.
+    const std::vector<Candidate> both = {cand("spotify", State::Playing, 5), cand("chrome", State::Playing, 8)};
+    CHECK(Choose(both, "spotify", &gone) == 0 && !gone);
+    // The pick stays even if it is paused ...
+    CHECK(Choose({cand("spotify", State::Paused, 5), cand("chrome", State::Playing, 8)}, "spotify", &gone) == 0 && !gone);
+    // ... until that player stops or goes: then the island chooses again, and says the pick is gone.
+    CHECK(Choose({cand("spotify", State::Stopped, 5), cand("chrome", State::Playing, 8)}, "spotify", &gone) == 1 && gone);
+    CHECK(Choose({cand("chrome", State::Paused, 8)}, "spotify", &gone) == 0 && gone);
+    // Cycling through the list, and the names.
+    CHECK(NextPick({"a", "b", "c"}, "a") == "b");
+    CHECK(NextPick({"a", "b", "c"}, "c") == "a");
+    CHECK(NextPick({"a", "b"}, "gone") == "a");
+    CHECK(NextPick({}, "a").empty());
+    const std::vector<std::string> names = UniqueNames({"Chrome", "Spotify", "Chrome"});
+    CHECK(names[0] == "Chrome" && names[1] == "Spotify" && names[2] == "Chrome (2)");
+}
+
 static void TestWater() {
     namespace w = bb::water;
     w::Settings s;
@@ -861,6 +890,7 @@ int wmain(int argc, wchar_t** argv) {
     TestLyricsText();
     TestStudioChat();
     TestAppList();
+    TestMediaPick();
     TestWater();
     TestIcsAllDay();
     TestChimes();

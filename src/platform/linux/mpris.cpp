@@ -6,6 +6,8 @@
 #include <map>
 #include <memory>
 
+#include "../../common/media_pick.h"
+
 namespace bb::mpris {
 namespace {
 
@@ -27,6 +29,7 @@ guint g_ownerSub = 0;
 guint g_seekSub = 0;
 std::map<std::string, std::unique_ptr<Player>> g_players;
 std::function<void()> g_onChange;
+std::string g_picked;  // the player chosen by hand ("" = automatic), forgotten when it stops
 
 std::string StringProp(GDBusProxy* proxy, const char* name) {
     GVariant* v = g_dbus_proxy_get_cached_property(proxy, name);
@@ -108,18 +111,29 @@ void OnOwnerChanged(GDBusConnection*, const gchar*, const gchar*, const gchar*, 
     Changed();
 }
 
+mediapick::State StateOf(const Player& p) {
+    const std::string status = StringProp(p.player, "PlaybackStatus");
+    if (status == "Playing") return mediapick::State::Playing;
+    if (status == "Paused") return mediapick::State::Paused;
+    return mediapick::State::Stopped;  // "Stopped", or no status yet
+}
+
+// The player on show. Bunbun: a pick made by hand stays until that player stops, and with no
+// pick the playing one wins, then the most recent (common/media_pick.h). It used to be
+// "whichever started last", so a video in the browser took over from the music and
+// there was no way back.
 Player* Best() {
-    Player* best = nullptr;
+    std::vector<mediapick::Candidate> candidates;
+    std::vector<Player*> players;
     for (auto& [bus, p] : g_players) {
         if (!p->player) continue;
-        const std::string status = StringProp(p->player, "PlaybackStatus");
-        if (status == "Stopped" || status.empty()) continue;
-        const bool playing = status == "Playing";
-        if (!best) { best = p.get(); continue; }
-        const bool bestPlaying = IsPlaying(*best);
-        if ((playing && !bestPlaying) || (playing == bestPlaying && p->lastPlaying > best->lastPlaying)) best = p.get();
+        candidates.push_back({bus, StateOf(*p), p->lastPlaying});
+        players.push_back(p.get());
     }
-    return best;
+    bool pickGone = false;
+    const int i = mediapick::Choose(candidates, g_picked, &pickGone);
+    if (pickGone) g_picked.clear();
+    return i < 0 ? nullptr : players[static_cast<size_t>(i)];
 }
 
 void Call(const char* method) {
@@ -170,6 +184,7 @@ Track Current() {
     t.active = true;
     t.playing = IsPlaying(*p);
     t.player = p->identity;
+    t.playerId = p->bus;
     if (GVariant* md = g_dbus_proxy_get_cached_property(p->player, "Metadata")) {
         GVariantDict dict;
         g_variant_dict_init(&dict, md);
@@ -194,6 +209,46 @@ Track Current() {
     }
     if (t.title.empty() && !t.playing) t.active = false;  // a paused player with nothing loaded
     return t;
+}
+
+std::vector<Source> Sources() {
+    const Player* shown = Best();
+    std::vector<Source> out;
+    std::vector<std::string> names;
+    for (auto& [bus, p] : g_players) {
+        if (!p->player || StateOf(*p) == mediapick::State::Stopped) continue;  // not running anything
+        Source s;
+        s.id = bus;
+        s.playing = IsPlaying(*p);
+        s.shown = p.get() == shown;
+        out.push_back(s);
+        names.push_back(p->identity);
+    }
+    const std::vector<std::string> unique = mediapick::UniqueNames(names);
+    for (size_t i = 0; i < out.size(); ++i) out[i].name = unique[i];
+    return out;
+}
+
+void Pick(const std::string& id) {
+    if (!id.empty() && !g_players.count(id)) return;
+    g_picked = id;
+    Changed();  // the island redraws with the new player
+}
+
+std::string Picked() {
+    Best();  // forgets a pick whose player has stopped
+    return g_picked;
+}
+
+void CycleSource() {
+    std::vector<std::string> ids;
+    std::string shown;
+    for (const Source& s : Sources()) {
+        ids.push_back(s.id);
+        if (s.shown) shown = s.id;
+    }
+    const std::string next = mediapick::NextPick(ids, shown);
+    if (!next.empty()) Pick(next);
 }
 
 double Position() {

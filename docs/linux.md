@@ -109,7 +109,7 @@ their data:
 | Page | On Linux |
 |---|---|
 | **Home** | Three cards picked in Settings → Island pages (Agent, Music, Focus, Weather, Calendar, Battery, System) and **Your links** under them |
-| **Music** | While something plays (MPRIS): cover, title, artist, album, controls, a glow in the album's colour; click the progress bar to jump to that point |
+| **Music** | While something plays (MPRIS): cover, title, artist, album, controls, a glow in the album's colour; click the progress bar to jump to that point. With several players running (say Spotify and a video in the browser) the player's name shows how many, and a click on it shows the next one; right-click → **Media source** lists them and has **Automatic**. A player you pick stays on show until it stops, then the island chooses again (a playing player first, then the most recent) |
 | **Lyrics** | Synced lyrics for the song that's playing, the current line in the middle (Features → Lyrics) |
 | **Calendar** | The month, today, and today's to-dos as an agenda. Calendar links (`.ics`) aren't read on Linux yet |
 | **Weather** | Open-Meteo, like Windows: now (feels like, humidity, wind, UV, sunrise and sunset), the next hours as a curve, and five days. °C / °F and Change City in the header. Your city from Settings, else roughly where you are from your IP address. Fetched with GIO, or `curl` where GIO can't do https |
