@@ -7,6 +7,7 @@ and versions follow [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 - **Linux: the music pill fits the song.** A long song title was cut at 200 px. The pill now grows to fit the title, and with lyrics on, to fit the lyric line, up to 40 % of the monitor's width (not a fixed 380 px).
+- **Linux: Settings → General → Check now asks GitHub for the latest release.** It used to say it couldn't check, without asking. It now shows "up to date" or the new version, with a Download button for the release page.
 
 ## [0.4.2]
 

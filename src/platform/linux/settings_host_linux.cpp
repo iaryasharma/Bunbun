@@ -24,6 +24,7 @@
 #include <cstring>
 #include <filesystem>
 #include <string>
+#include <thread>
 
 #include "../../agents/hook_installer.h"
 #include "../../common/backup.h"
@@ -32,6 +33,7 @@
 #include "../../common/todo_commands.h"
 #include "../../common/unix_socket.h"
 #include "mascot_png.h"
+#include "update_check_linux.h"
 #include "platform.h"
 #include "settings.h"
 
@@ -491,13 +493,6 @@ Value Dispatch(const std::string& cmd, const Value& args, std::string* err) {
         o["models"] = Value::Array();
         return o;
     }
-    if (cmd == "checkUpdate") {
-        Value o = Value::Object();
-        o["current"] = Value::String(BUNBUN_VERSION_STR);
-        o["checked"] = Value::Bool(false);
-        o["error"] = Value::String("Update your package manager's copy, or download the new AppImage.");
-        return o;
-    }
     if (cmd == "getPagePreviews") return PagePreviews(args.getNumber("since"));
     if (cmd == "listTodos" || cmd == "saveTodo" || cmd == "deleteTodo" || cmd == "clearDoneTodos")
         return bb::todos::Command(cmd, args, bb::plat::Wide(bb::plat::ConfigDir() + "/todos.tsv"), err);
@@ -532,6 +527,35 @@ void Reply(const Value& reply) {
 #endif
 }
 
+// The update check asks GitHub, which can take seconds: it runs on its own thread, and the
+// answer goes back to the page on the main thread (g_idle_add), so the window stays responsive.
+void CheckUpdateAsync(Value reply) {
+    auto* job = new Value(std::move(reply));
+    std::thread([job] {
+        const bb::update::Release r = bb::update::FetchLatestLinux(std::string("Bunbun/") + BUNBUN_VERSION_STR);
+        Value o = Value::Object();
+        o["current"] = Value::String(BUNBUN_VERSION_STR);
+        o["checked"] = Value::Bool(r.ok);
+        if (r.ok) {
+            o["latest"] = Value::String(r.version);
+            o["newer"] = Value::Bool(bb::update::CompareVersions(r.version, BUNBUN_VERSION_STR) > 0);
+            o["url"] = Value::String(r.url);
+            o["name"] = Value::String(r.name);
+            o["canInstall"] = Value::Bool(false);  // on Linux the release page is the way to get it
+        } else {
+            o["error"] = Value::String(r.error);
+        }
+        (*job)["ok"] = Value::Bool(true);
+        (*job)["result"] = std::move(o);
+        g_idle_add([](gpointer d) -> gboolean {
+            auto* done = static_cast<Value*>(d);
+            Reply(*done);
+            delete done;
+            return G_SOURCE_REMOVE;
+        }, job);
+    }).detach();
+}
+
 bool FromOurPage() {
     const char* uri = webkit_web_view_get_uri(g_view);
     if (!uri) return false;
@@ -550,6 +574,10 @@ void OnMessage(WebKitUserContentManager*, WebKitJavascriptResult* result, gpoint
     if (!ok) return;
     Value reply = Value::Object();
     reply["id"] = msg.find("id") ? *msg.find("id") : Value::Null();
+    if (msg.getString("cmd") == "checkUpdate") {
+        CheckUpdateAsync(std::move(reply));
+        return;
+    }
     static const Value kEmpty = Value::Object();
     const Value* args = msg.find("args");
     std::string err;

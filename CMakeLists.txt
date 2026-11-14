@@ -100,8 +100,8 @@ target_link_options(bunbun-hook PRIVATE -static-libstdc++ -static-libgcc)
 add_executable(test_studio tests/test_studio.cpp)
 
 if(BUNBUN_BUILD_SETTINGS)
-    add_executable(bunbun-settings ${LINUX}/settings_host_linux.cpp)
-    target_link_libraries(bunbun-settings PRIVATE bunbun_shared PkgConfig::WEBKIT)
+    add_executable(bunbun-settings ${LINUX}/settings_host_linux.cpp ${LINUX}/update_check_linux.cpp)
+    target_link_libraries(bunbun-settings PRIVATE bunbun_shared PkgConfig::WEBKIT PkgConfig::SOUP)
 endif()
 
 # The settings UI (React + Vite), built into <build>/settings-ui next to the exes.
