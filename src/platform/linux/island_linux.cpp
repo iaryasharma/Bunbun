@@ -648,6 +648,15 @@ std::string StripText() {
 
 bool FaceShown() { return g_mascotOn || bb::lfeat::Get().eyes; }
 
+// The widest the music pill may grow: 40 % of the monitor it's on, and never under 280 px.
+// The limit follows the screen, so a long title or lyric line can't push the island off it.
+double MusicPillMaxWidth() {
+    GdkRectangle geo{0, 0, 1920, 1080};
+    GdkDisplay* display = g_window ? gtk_widget_get_display(g_window) : gdk_display_get_default();
+    if (GdkMonitor* mon = display ? bb::lfeat::TargetMonitor(display) : nullptr) gdk_monitor_get_geometry(mon, &geo);
+    return std::max(280.0, 0.4 * geo.width);
+}
+
 // The pill's target size for what it shows.
 void TargetSize(cairo_t* cr, Kind k, double* w, double* h) {
     const auto& f = bb::lfeat::Get();
@@ -691,10 +700,16 @@ void TargetSize(cairo_t* cr, Kind k, double* w, double* h) {
                 *h = kCollapsedH;
                 return;
             }
-            // Lyrics on the small island: as wide as the song's longest line needs.
-            if (const double lw = LyricPillWidth(cr, 38 + 40); lw > 0) { *w = clock + lw + DotsRoom(); *h = kCollapsedH; return; }
-            // Modules.CollapsedTitle off: just the cover and the bars.
-            const double title = f.collapsedTitle ? std::min(200.0, TextWidth(cr, g_track.title, 12.5, true)) : 0;
+            const double maxPill = MusicPillMaxWidth();
+            // Lyrics on the small island: as wide as the song's longest line needs, up to the limit.
+            if (const double lw = LyricPillWidth(cr, 38 + 40, maxPill); lw > 0) { *w = clock + lw + DotsRoom(); *h = kCollapsedH; return; }
+            // Modules.CollapsedTitle off: just the cover and the bars. Otherwise the title's own width
+            // (what Text() draws: the title, or the player's name when there's no title), up to the limit.
+            const std::string& shown = g_track.title.empty() ? g_track.player : g_track.title;
+            const double room = std::max(0.0, maxPill - clock - 36 - 44 - DotsRoom());
+            // With Lyrics on, the title is drawn by the lyric pill's painter, so measure it the same way.
+            const double textW = bb::llyrics::PillOn() ? PillTextWidth(cr, shown) : TextWidth(cr, shown, 12.5, true);
+            const double title = f.collapsedTitle ? std::min(textW, room) : 0;
             *w = clock + 36 + title + 44 + DotsRoom();
             *h = kCollapsedH;
             return;

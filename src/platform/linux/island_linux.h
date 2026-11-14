@@ -114,9 +114,11 @@ void PaintRichCard(cairo_t* cr, const Rect& p);
 // Studio's own actions (tabs, links, cards, compose, pages). False if not one of them.
 bool StudioDo(const Hit& h);
 // Lyrics on the small island (Bunbun.PillLyrics): the pill's width for this song
-// (0 = no usable lyrics), given the room the pill needs besides the text; and
-// the line itself, drawn into `area`.
-double LyricPillWidth(cairo_t* cr, double chrome);
+// (0 = no usable lyrics), given the room the pill needs besides the text and the widest it
+// may grow (maxWidth); and the line itself, drawn into `area`.
+double LyricPillWidth(cairo_t* cr, double chrome, double maxWidth);
+// The width of `text` as the lyric pill draws it (its font and size).
+double PillTextWidth(cairo_t* cr, const std::string& text);
 void PaintLyricPill(cairo_t* cr, const Rect& area);
 // A short message on the island (a reminder, the focus timer), for `seconds`.
 // level 0..1 draws a bar (volume, brightness); < 0 none.

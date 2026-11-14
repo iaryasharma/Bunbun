@@ -5,6 +5,9 @@ and versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- **Linux: the music pill fits the song.** A long song title was cut at 200 px. The pill now grows to fit the title, and with lyrics on, to fit the lyric line, up to 40 % of the monitor's width (not a fixed 380 px).
+
 ## [0.4.2]
 
 ### Added

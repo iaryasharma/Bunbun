@@ -2117,11 +2117,11 @@ Shown g_pillCur, g_pillPrev;
 double g_pillAnimAt = -10;
 std::string g_pillTrack;           // the song g_pillCur belongs to
 std::string g_pillWidthTrack;      // the song the fitted width was measured for
-double g_pillWidth = 0;
+double g_pillWidthNeed = 0;        // the longest lyric line of that song, in px
 
 }  // namespace
 
-double LyricPillWidth(cairo_t* cr, double chrome) {
+double LyricPillWidth(cairo_t* cr, double chrome, double maxWidth) {
     if (!llyrics::PillOn() || !llyrics::Usable(g_track)) {
         g_pillWidthTrack.clear();
         return 0;
@@ -2132,9 +2132,16 @@ double LyricPillWidth(cairo_t* cr, double chrome) {
         double widest = 0;
         for (const auto& l : llyrics::Current().lines)
             if (!l.text.empty()) widest = std::max(widest, WidthAt(cr, U(l.text), kPillTextSize));
-        g_pillWidth = std::clamp(widest + chrome + 6, 280.0, 380.0);
+        g_pillWidthNeed = widest + chrome + 6;
     }
-    return g_pillWidth;
+    // The limit comes from the screen, not a fixed number, so a long line isn't cut.
+    return std::clamp(g_pillWidthNeed, 280.0, std::max(280.0, maxWidth));
+}
+
+double PillTextWidth(cairo_t* cr, const std::string& text) {
+    // The same font and size PaintLyricPill draws the title in (the title shows there when no
+    // lyric is usable), so the pill is sized for the text it will show.
+    return WidthAt(cr, text, kPillTextSize);
 }
 
 void PaintLyricPill(cairo_t* cr, const Rect& area) {
