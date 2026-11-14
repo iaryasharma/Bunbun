@@ -5,6 +5,8 @@ and versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.3]
+
 ### Fixed
 - **Linux: with two media players you can choose which one the island shows.** A browser video used to take over
   from Spotify and stay, with no way back. With more than one player playing or paused, the player's name on the
