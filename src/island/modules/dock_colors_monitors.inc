@@ -274,11 +274,12 @@ D2D1_COLOR_F EnsureContrastAgainstBackground(D2D1_COLOR_F candidate, D2D1_COLOR_
 
 // Returns true if the currently active foreground window is in full screen mode
 bool IsForegroundFullscreen(HWND targetHwnd);
+bool IsFullscreenWindow(HWND fg, HWND targetHwnd);
 
-// Bunbun: the program behind the foreground window, lower case without ".exe".
-std::wstring ForegroundAppName() {
+// Bunbun: the program behind a window (the foreground one by default), lower case without ".exe".
+std::wstring ForegroundAppName(HWND window = nullptr) {
     DWORD pid = 0;
-    GetWindowThreadProcessId(GetForegroundWindow(), &pid);
+    GetWindowThreadProcessId(window ? window : GetForegroundWindow(), &pid);
     HANDLE proc = pid ? OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid) : nullptr;
     if (!proc) return {};
     wchar_t path[MAX_PATH];
@@ -298,12 +299,43 @@ bool FullscreenWatched(const Settings& s) {
     return s.autoHideFullscreen || !s.fullscreenTuckApps.empty() || !s.fullscreenHideApps.empty();
 }
 
+// Bunbun: the full-screen window to act on: the foreground one, else (with several displays) one that
+// is still full screen on a display you looked away from. Focusing another display used to unfold
+// the island over the game or film still playing on the first. `onlyMonitor` limits that search to one
+// display (null: any), for when the island lives on a single display.
+HWND FullscreenWindow(HWND islandHwnd, HMONITOR onlyMonitor, bool anyDisplay) {
+    HWND fg = GetForegroundWindow();
+    if (IsFullscreenWindow(fg, islandHwnd)) return fg;
+    if (GetSystemMetrics(SM_CMONITORS) < 2) return nullptr;
+    // Only a display you looked away from counts: on the display you are using, a full-screen window
+    // behind your current one (alt-tabbed away) is no reason to keep the island folded.
+    struct Ctx { HWND island, found; HMONITOR only, fgMon; bool any; } ctx{
+        islandHwnd, nullptr, onlyMonitor, fg ? MonitorFromWindow(fg, MONITOR_DEFAULTTONEAREST) : nullptr, anyDisplay};
+    EnumWindows([](HWND w, LPARAM lp) -> BOOL {
+        auto* c = reinterpret_cast<Ctx*>(lp);
+        if (!IsWindowVisible(w) || IsIconic(w)) return TRUE;
+        DWORD pid = 0;
+        GetWindowThreadProcessId(w, &pid);
+        if (pid == GetCurrentProcessId()) return TRUE;
+        DWORD cloaked = 0;
+        if (SUCCEEDED(DwmGetWindowAttribute(w, 14 /* DWMWA_CLOAKED */, &cloaked, sizeof(cloaked))) && cloaked) return TRUE;
+        const HMONITOR mon = MonitorFromWindow(w, MONITOR_DEFAULTTONEAREST);
+        if (mon == c->fgMon || (!c->any && mon != c->only)) return TRUE;
+        if (!IsFullscreenWindow(w, c->island)) return TRUE;
+        c->found = w;
+        return FALSE;
+    }, reinterpret_cast<LPARAM>(&ctx));
+    return ctx.found;
+}
+
 // Bunbun: what the island does for the app in full screen right now: 0 = nothing
 // (not full screen, or Show), 1 = tuck, 2 = hide. The per-app lists win over
 // In full screen.
-int FullscreenAction(HWND islandHwnd, const Settings& s) {
-    if (!IsForegroundFullscreen(islandHwnd)) return 0;
-    const std::wstring app = ForegroundAppName();
+int FullscreenAction(HWND islandHwnd, const Settings& s, HWND* fsWindow = nullptr, HMONITOR onlyMonitor = nullptr, bool anyDisplay = false) {
+    const HWND fsWin = FullscreenWindow(islandHwnd, onlyMonitor, anyDisplay);
+    if (fsWindow) *fsWindow = fsWin;
+    if (!fsWin) return 0;
+    const std::wstring app = ForegroundAppName(fsWin);
     if (bb::applist::Matches(s.fullscreenShowApps, app)) return 0;
     if (bb::applist::Matches(s.fullscreenHideApps, app)) return 2;
     if (bb::applist::Matches(s.fullscreenTuckApps, app)) return 1;
@@ -311,7 +343,10 @@ int FullscreenAction(HWND islandHwnd, const Settings& s) {
 }
 
 bool IsForegroundFullscreen(HWND targetHwnd) {
-    HWND fg = GetForegroundWindow();
+    return IsFullscreenWindow(GetForegroundWindow(), targetHwnd);
+}
+
+bool IsFullscreenWindow(HWND fg, HWND targetHwnd) {
     if (!fg || fg == targetHwnd || fg == GetDesktopWindow() || fg == GetShellWindow()) {
         return false;
     }

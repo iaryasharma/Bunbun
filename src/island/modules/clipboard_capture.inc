@@ -116,6 +116,24 @@ bool ReadClipboardImagePixels(HWND hwnd, BitmapPixels* outPixels, UINT maxDim) {
     return true;
 }
 
+// Bunbun: did the user just open this window themselves? A taskbar right-click menu, the Notification
+// Center, Quick Settings and the calendar are explorer / shell windows too, and looked like toasts.
+// A real toast arrives on its own: the pointer isn't on the taskbar and no Windows key is down.
+bool UserJustOpenedShellWindow(const wchar_t* className) {
+    if ((GetAsyncKeyState(VK_LWIN) | GetAsyncKeyState(VK_RWIN)) & 0x8000) return true;  // Win+N, Win+A, Win+B...
+    LASTINPUTINFO lii{sizeof(lii)};
+    if (!GetLastInputInfo(&lii) || GetTickCount() - lii.dwTime > 1500) return false;
+    POINT pt{};
+    GetCursorPos(&pt);
+    for (const wchar_t* cls : {L"Shell_TrayWnd", L"Shell_SecondaryTrayWnd"}) {
+        for (HWND tray = nullptr; (tray = FindWindowExW(nullptr, tray, cls, nullptr)) != nullptr;) {
+            RECT r{};
+            if (GetWindowRect(tray, &r) && PtInRect(&r, pt)) return true;  // clicked on the taskbar
+        }
+    }
+    return _wcsicmp(className, L"XAML_WindowedPopupClass") == 0;  // a menu opened by a click
+}
+
 bool IsLikelyToastWindow(HWND hwnd, const wchar_t* className, const wchar_t* title) {
     if (hwnd == g_hwnd || !hwnd) {
         return false;
@@ -154,7 +172,9 @@ bool IsLikelyToastWindow(HWND hwnd, const wchar_t* className, const wchar_t* tit
             const std::wstring base = ToLowerCopy(BaseNameFromPath(image));
             if (base == L"explorer.exe" || base == L"sihost.exe" || base == L"shellexperiencehost.exe") {
                 // Ensure it's not the start menu, search, or action center main panel
-                if (text != L"start" && text != L"action center" && text != L"search" && text != L"task view") {
+                if (text != L"start" && text != L"action center" && text != L"search" && text != L"task view" &&
+                    text != L"notification center" && text != L"quick settings" && text != L"widgets" &&
+                    !UserJustOpenedShellWindow(className)) {
                     return true;
                 }
             }
@@ -180,6 +200,7 @@ void CaptureShellNotification(HWND hwnd) {
     if (!IsLikelyToastWindow(hwnd, className, title)) {
         return;
     }
+    Wh_Log(L"Notification: shown for window class=%ls title=%ls", className, title);  // Bunbun: to tell toasts from flyouts
 
     NotificationSnapshot notification;
     notification.active = true;

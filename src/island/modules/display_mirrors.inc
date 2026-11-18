@@ -524,6 +524,13 @@ void Present(HDC src, const Settings& s, RECT pill, SIZE stage, BYTE alpha, doub
     g_places = std::move(places);
 }
 
+// Bunbun: the island is hidden (hotkey or menu, idle, full screen): its copies on the other displays go too.
+// Present() isn't called while the render thread is parked, so nothing else would hide them.
+void HideAll() {
+    for (auto& m : g_list)
+        if (m.visible) { ShowWindow(m.hwnd, SW_HIDE); m.visible = false; }
+}
+
 }  // namespace Mirrors
 
 // z-order / owner / backdrop-region upkeep only. Position and size are NOT touched

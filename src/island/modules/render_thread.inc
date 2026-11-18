@@ -182,6 +182,7 @@ DWORD WINAPI RenderThreadProc(void*) {
                 // lingering render/animation work this frame.
                 ShowWindow(hwnd, SW_HIDE);
                 DwmBackdrop::HideAll();
+                Mirrors::HideAll();  // Bunbun: the hotkey hid only this display's island
                 g_audioCaptureNeeded.store(false, std::memory_order_relaxed);
                 wasManuallyHidden = true;
             }
@@ -573,6 +574,14 @@ DWORD WINAPI RenderThreadProc(void*) {
         const bool unhideGraceActive = (now < g_hotkeyUnhideUntil.load());
         const bool hoverUnhides = g_settings.unhideOnHover && hover;
 
+        // Bunbun: idle means the user is away: no keyboard or mouse input anywhere, nothing playing and no
+        // screen being shared or recorded. It used to count only touches on the island itself.
+        if (g_settings.autoHideIdleSeconds > 0) {
+            LASTINPUTINFO lii{sizeof(lii)};
+            const bool inputRecent = GetLastInputInfo(&lii) && (GetTickCount() - lii.dwTime) / 1000.0 < g_settings.autoHideIdleSeconds;
+            if (inputRecent || snapshot.system.screenActive || snapshot.media.playing) lastInteractionTime = now;
+        }
+
         bool currentlyHidden = false;
         if (!unhideGraceActive) {
             if (g_settings.autoHideIdleSeconds == -1 && !isTransientAlert && !pinned) {
@@ -655,13 +664,15 @@ DWORD WINAPI RenderThreadProc(void*) {
         static double lastFullscreenCheck = -1.0;  // -1.0 guarantees the very first iteration checks
         if (now - lastFullscreenCheck > 0.5) {
             // Bunbun: per app (the Show / Tuck / Hide lists) on top of In full screen.
-            int fsAction = FullscreenWatched(g_settings) ? FullscreenAction(hwnd, g_settings) : 0;
+            HWND fsWin = nullptr;
+            const bool separateAll = g_settings.displaysAll && g_settings.displaysSeparate;
+            int fsAction = FullscreenWatched(g_settings) ? FullscreenAction(hwnd, g_settings, &fsWin, GetAnchorMonitor(), separateAll) : 0;
             // Bunbun: Separate displays. Only the full-screen app's display folds. If that is
             // the working island's display, the island moves to another one; that display's
             // own island then does the tucking or hiding (Mirrors::Present).
             HMONITOR fsOther = nullptr;
             if (fsAction != 0 && g_settings.displaysAll && g_settings.displaysSeparate) {
-                const HMONITOR fsMon = MonitorFromWindow(GetForegroundWindow(), MONITOR_DEFAULTTONEAREST);
+                const HMONITOR fsMon = MonitorFromWindow(fsWin, MONITOR_DEFAULTTONEAREST);
                 HMONITOR anchor = GetAnchorMonitor();
                 if (fsMon == anchor && !pinned && !isHoverExpanded) {
                     if (const HMONITOR other = Mirrors::OtherDisplay(fsMon)) {
@@ -847,6 +858,7 @@ DWORD WINAPI RenderThreadProc(void*) {
             }
         }
 
+        bool hideCollapse = false;  // Bunbun: this frame the island is folding away (idle hide, full screen)
         const bool fullscreenSuppressed =
             isFullscreen && !g_fullscreenOverrideVisible.load(std::memory_order_relaxed) &&
             !s_fullscreenTuckNow;  // Bunbun: tucked instead (see the full screen check)
@@ -854,6 +866,7 @@ DWORD WINAPI RenderThreadProc(void*) {
             primary.width = 0.0f;
             primary.height = 0.0f;
             secondary.reset();
+            hideCollapse = true;
         }
 
         // Bunbun: tucked away. The island shrinks to a thin line; pointing at it for
@@ -970,13 +983,20 @@ DWORD WINAPI RenderThreadProc(void*) {
             targetWidth = primary.width + secondary->width + 12.0f * g_settings.sizeScale;
             targetHeight = std::max(primary.height, secondary->height);
         }
+        // Bunbun: hiding keeps the width and only folds the height, so the island retracts up into
+        // the top of the screen (and drops down from it when it comes back) instead of shrinking
+        // toward the middle of its own length.
+        static float s_shownWidth = 120.0f;
+        if (hideCollapse) targetWidth = std::max(s_shownWidth, 1.0f);
+        else if (targetWidth > 1.0f) s_shownWidth = targetWidth;
 
         widthSpring.target = targetWidth;
         heightSpring.target = targetHeight;
 
-        if (justUnhidden || (unhideGraceActive && widthSpring.value < 0.5f && targetWidth > 1.0f)) {
+        if (justUnhidden) {  // the grace period needs no reset: the springs just grow the height from 0
             widthSpring.Reset(targetWidth);
             heightSpring.Reset(targetHeight);
+            heightSpring.value = 0.0f;  // Bunbun: grow down from the top of the screen
             nudgeSpring.Reset(0.0f);
         }
 
@@ -1411,8 +1431,7 @@ DWORD WINAPI RenderThreadProc(void*) {
         const bool wantsAutoHiddenPark =
             !g_manuallyHidden.load() && !pinned && !isHoverExpanded && !isTransientAlert &&
             !privacyActive && (isHidden || fullscreenSuppressed) &&
-            widthSpring.value < 0.5f && heightSpring.value < 0.5f &&
-            std::fabs(widthSpring.velocity) < 0.5f && std::fabs(heightSpring.velocity) < 0.5f;
+            heightSpring.value < 0.5f && std::fabs(heightSpring.velocity) < 0.5f;
 
         if (wantsAutoHiddenPark) {
             parkedForFullscreen = fullscreenSuppressed;
@@ -1420,6 +1439,7 @@ DWORD WINAPI RenderThreadProc(void*) {
             g_autoHiddenParked = true;
             ShowWindow(hwnd, SW_HIDE);
             DwmBackdrop::HideAll();
+            Mirrors::HideAll();
             g_audioCaptureNeeded.store(false, std::memory_order_relaxed);
             setHighResTimer(false);
             continue;

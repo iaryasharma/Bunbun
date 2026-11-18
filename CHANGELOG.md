@@ -5,6 +5,19 @@ and versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.4]
+### Fixed
+- **The Ask Bun chat has a close button.** A ✕ next to "New chat" closes it; before, only Esc or clicking away did.
+- **Taskbar menus and the Notification Center no longer show up as notifications.** Windows shell windows you open yourself (a right-click on a taskbar icon, Win+N, Win+A, the calendar, widgets) were mistaken for toasts. Windows opened while the pointer is on the taskbar, a Windows key is down or you just clicked are now ignored.
+- **Full screen stays tucked when you look at another display.** The island unfolded as soon as focus left the full-screen app, even though the game or film was still full screen. It now also looks for a full-screen window on the island's own display (on any display with Separate displays).
+- **The hide shortcut now hides the island on every display.** It only hid the one on the main display;
+  the copies on other displays stayed up.
+- **Auto-hide counts real idleness.** The island hid when you weren't touching *it*. It now hides only when
+  there has been no keyboard or mouse input anywhere, nothing is playing and no screen is being shared or
+  recorded, and comes back as soon as you use the PC.
+- **Auto-hide retracts into the top of the screen.** It used to shrink toward the middle of its own width;
+  now it folds up into the top edge, and drops down from there when it returns.
+
 ## [0.4.3]
 
 ### Fixed

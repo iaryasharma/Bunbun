@@ -3367,9 +3367,20 @@
             target_->FillEllipse(D2D1::Ellipse(dot, 3.5f, 3.5f), b);
         }
         SText(who, D2D1::RectF(pill.left + 26, pill.top, pill.right - 8, pill.bottom), SFLabel, SCol(0xe8e8ef));
+        // Bunbun: a close button, so the chat can be dismissed with the mouse (Esc still works).
+        const D2D1_RECT_F cb = D2D1::RectF(rect.right - 14 - 22, topY + 2, rect.right - 14, topY + 24);
+        const float closeHover = SHover(StudioAction::ChatClose);
+        SFillRound(cb, 11, D2D1::ColorF(1, 1, 1, SLerp(0.08f, 0.14f, closeHover)));
+        {
+            const D2D1_COLOR_F xc = SLerpCol(SCol(0xc9c9d2), SCol(0xffffff), closeHover);
+            const D2D1_POINT_2F c = D2D1::Point2F((cb.left + cb.right) * 0.5f, (cb.top + cb.bottom) * 0.5f);
+            SLine(D2D1::Point2F(c.x - 4.0f, c.y - 4.0f), D2D1::Point2F(c.x + 4.0f, c.y + 4.0f), xc, 1.4f);
+            SLine(D2D1::Point2F(c.x + 4.0f, c.y - 4.0f), D2D1::Point2F(c.x - 4.0f, c.y + 4.0f), xc, 1.4f);
+        }
+        SHit(cb, StudioAction::ChatClose);
         if (!g_chat.empty() && !g_compose.kind) {  // Bunbun: not while replying to an agent
             const float nw = SMeasure(L"New chat", SFLabel) + 22;
-            const D2D1_RECT_F nb = D2D1::RectF(rect.right - 14 - nw, topY + 2, rect.right - 14, topY + 24);
+            const D2D1_RECT_F nb = D2D1::RectF(cb.left - 8 - nw, topY + 2, cb.left - 8, topY + 24);
             SFillRound(nb, 11, D2D1::ColorF(1, 1, 1, SLerp(0.08f, 0.14f, SHover(StudioAction::ChatNew))));
             SText(L"New chat", nb, SFLabel, SCol(0xc9c9d2), 1);
             SHit(nb, StudioAction::ChatNew);

@@ -1127,7 +1127,7 @@ void EnsureFocusGuard() {
 enum class StudioAction {
     Tab, Volume, PlayPause, OpenMusic, FocusStart, FocusStop, AgentPage, AgentFocus,
     ClipCopy, ClipClear, NoteToggle, NoteEdit, Settings, Close,
-    ChatChip, ChatNew, ChatPanel, ColorPicker, ModelCycle, AgentReply,
+    ChatChip, ChatNew, ChatPanel, ChatClose, ColorPicker, ModelCycle, AgentReply,
     FocusWheel, FocusPreset, FocusAdd5, FocusPause, FocusPage, OpenTab, OpenLink, MirrorStart, MirrorStop, HomeEdit, HomeTileCycle,
     Brightness,  // Bunbun: the System page's brightness slider
     SoundMic, SoundTest, SoundOpen, SoundDevice, SoundToggle,  // Bunbun: the Mirror page's sound check (sound_check_module.inc)
@@ -1692,6 +1692,9 @@ bool HandleStudioClick(HWND hwnd, int x, int y) {
             break;
         case StudioAction::ChatPanel:
             TouchLookupPanel();  // a click inside the chat keeps it open and focused
+            break;
+        case StudioAction::ChatClose:  // Bunbun: the chat had no way to be closed with the mouse
+            CloseLookupPanel(g_hwnd);
             break;
         case StudioAction::RadioToggle: {  // Bunbun: arg 0 Wi-Fi, 1 Bluetooth
             int radio = -1;
